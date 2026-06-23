@@ -1,0 +1,7 @@
+@import './client/styles/layout.css';
+
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
