@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 
 import { LeaveRoomButton } from '../components/LeaveRoomButton'
 import { PlayerCard } from '../components/PlayerCard'
-import { usePartySocket } from '../hooks/usePartySocket'
+import { useRoomRealtime } from '../hooks/useRoomRealtime'
+import { cloudflareRealtimeTransport } from '../realtime/cloudflareRealtimeTransport'
 import { AnsweringScreen } from './AnsweringScreen'
 import { AnswersReadyScreen } from './AnswersReadyScreen'
 import { ChatScreen } from './ChatScreen'
@@ -39,7 +40,7 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
     sendChatMessage,
     markChatAsRead,
     leaveRoom,
-  } = usePartySocket(roomId, playerName, entryMode, onRoomClosed)
+  } = useRoomRealtime(roomId, playerName, entryMode, onRoomClosed, cloudflareRealtimeTransport)
   const players = roomState?.players ?? []
   const activePlayers = players.filter((player) => player.id !== roomState?.hostId)
   const phase = roomState?.phase

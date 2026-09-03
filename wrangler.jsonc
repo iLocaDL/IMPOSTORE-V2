@@ -1,0 +1,29 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+
+  "name": "impostore-v2-realtime",
+
+  "main": "worker/index.ts",
+
+  "compatibility_date": "2026-08-28",
+
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOMS",
+        "class_name": "GameRoom"
+      }
+    ]
+  },
+
+  "exports": {
+    "GameRoom": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -1,9 +1,13 @@
-import type * as Party from 'partykit/server'
-
 import type { RoomPhase } from '../shared/types'
 
-type RegisteredRoom = {
+export type RegisteredRoom = {
   phase: RoomPhase
+}
+
+export type RoomRegistryStorage = {
+  get: (roomId: string) => Promise<RegisteredRoom | undefined>
+  put: (roomId: string, room: RegisteredRoom) => Promise<void>
+  delete: (roomId: string) => Promise<void>
 }
 
 const ROOM_CODE_PATTERN = /^[A-Z1-9]{4}$/
@@ -12,10 +16,10 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
 }
 
-export default class RoomRegistry implements Party.Server {
-  constructor(readonly room: Party.Room) {}
+export default class RoomRegistry {
+  constructor(readonly storage: RoomRegistryStorage) {}
 
-  async onRequest(request: Party.Request) {
+  async handleRequest(request: Request) {
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -32,18 +36,18 @@ export default class RoomRegistry implements Party.Server {
     }
 
     if (request.method === 'POST') {
-      const existingRoom = await this.room.storage.get<RegisteredRoom>(roomId)
+      const existingRoom = await this.storage.get(roomId)
 
       if (existingRoom) {
         return this.respond({ message: 'Il codice stanza è già in uso.' }, 409)
       }
 
-      await this.room.storage.put(roomId, { phase: 'lobby' } satisfies RegisteredRoom)
+      await this.storage.put(roomId, { phase: 'lobby' })
       return this.respond({ roomId, phase: 'lobby' }, 201)
     }
 
     if (request.method === 'GET') {
-      const registeredRoom = await this.room.storage.get<RegisteredRoom>(roomId)
+      const registeredRoom = await this.storage.get(roomId)
 
       if (!registeredRoom) {
         return this.respond({ message: 'La stanza non esiste.' }, 404)
@@ -58,25 +62,25 @@ export default class RoomRegistry implements Party.Server {
 
     if (request.method === 'PATCH') {
       const phase = new URL(request.url).searchParams.get('phase')
-      const registeredRoom = await this.room.storage.get<RegisteredRoom>(roomId)
+      const registeredRoom = await this.storage.get(roomId)
 
       if (!registeredRoom || !this.isRoomPhase(phase)) {
         return this.respond({ message: 'Stanza non disponibile.' }, 404)
       }
 
-      await this.room.storage.put(roomId, { phase })
+      await this.storage.put(roomId, { phase })
       return this.respond({ roomId, phase })
     }
 
     if (request.method === 'DELETE') {
-      await this.room.storage.delete(roomId)
+      await this.storage.delete(roomId)
       return this.respond({ roomId })
     }
 
     return this.respond({ message: 'Metodo non supportato.' }, 405)
   }
 
-  private getRoomId(request: Party.Request) {
+  private getRoomId(request: Request) {
     const roomId = new URL(request.url).pathname.split('/').at(-1)?.toUpperCase()
     return roomId && ROOM_CODE_PATTERN.test(roomId) ? roomId : null
   }

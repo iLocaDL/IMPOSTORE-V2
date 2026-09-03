@@ -1,16 +1,9 @@
-import PartySocket from 'partysocket'
-
 import { generateRoomCode } from '../roomCodes'
 
-const PARTYKIT_HOST = 'localhost:1999'
-const REGISTRY_PARTY = 'roomregistry'
-const REGISTRY_ROOM = 'rooms'
+export type RoomRegistryMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
+export type RoomRegistryRequest = (roomId: string, method?: RoomRegistryMethod) => Promise<void>
 
-type RoomRegistryErrorPayload = {
-  message?: string
-}
-
-class RoomRegistryError extends Error {
+export class RoomRegistryError extends Error {
   constructor(
     message: string,
     readonly status: number,
@@ -19,26 +12,7 @@ class RoomRegistryError extends Error {
   }
 }
 
-async function requestRoom(roomId: string, method = 'GET') {
-  const response = await PartySocket.fetch(
-    {
-      host: PARTYKIT_HOST,
-      party: REGISTRY_PARTY,
-      room: REGISTRY_ROOM,
-      path: `rooms/${roomId}`,
-    },
-    { method },
-  )
-
-  if (response.ok) {
-    return
-  }
-
-  const payload = await response.json().catch(() => null) as RoomRegistryErrorPayload | null
-  throw new RoomRegistryError(payload?.message ?? 'Operazione sulla stanza non riuscita.', response.status)
-}
-
-export async function createRoom(): Promise<string> {
+export async function createRoom(requestRoom: RoomRegistryRequest): Promise<string> {
   while (true) {
     const roomId = generateRoomCode()
 
@@ -55,7 +29,7 @@ export async function createRoom(): Promise<string> {
   }
 }
 
-export async function validateRoomJoin(roomId: string) {
+export async function validateRoomJoin(roomId: string, requestRoom: RoomRegistryRequest) {
   try {
     await requestRoom(roomId)
   } catch (error) {

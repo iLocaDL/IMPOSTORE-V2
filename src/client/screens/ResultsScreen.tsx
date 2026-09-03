@@ -9,11 +9,7 @@ type ResultsScreenProps = {
 }
 
 export function ResultsScreen({ results, isHost, onNewGame, onLeave }: ResultsScreenProps) {
-  const questionCounts = results.reduce<Record<string, number>>((counts, result) => {
-    counts[result.question] = (counts[result.question] ?? 0) + 1
-    return counts
-  }, {})
-  const impostorPlayerId = results.find((result) => questionCounts[result.question] === 1)?.playerId
+  const impostorPlayerId = results.find((result) => result.isImpostor)?.playerId
 
   return (
     <main className="page-container">

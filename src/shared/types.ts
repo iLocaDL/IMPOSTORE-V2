@@ -15,6 +15,7 @@ export type PlayerAnswer = {
 
 export type RoundResult = PlayerAnswer & {
   question: string
+  isImpostor: boolean
 }
 
 export type ChatMessage = {
