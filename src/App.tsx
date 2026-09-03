@@ -1,19 +1,46 @@
 import { HomeScreen } from './client/screens/HomeScreen'
 import { LobbyScreen } from './client/screens/LobbyScreen'
+import { GameModeScreen } from './client/screens/GameModeScreen'
 import { useState } from 'react'
 
 import { generateRoomCode } from './client/roomCodes'
+import { readActiveRoomId } from './client/realtime/roomSessionStorage'
+import type { GameMode } from './shared/types'
+
+type LobbyEntry = {
+  playerName: string
+  roomId: string
+  entryMode: 'create' | 'join'
+  mode?: GameMode
+}
+
+function getInitialLobby(): LobbyEntry | null {
+  const roomId = readActiveRoomId()
+
+  return roomId ? { playerName: '', roomId, entryMode: 'join' } : null
+}
 
 function App() {
-  const [lobby, setLobby] = useState<{ playerName: string; roomId: string; entryMode: 'create' | 'join' } | null>(null)
+  const [lobby, setLobby] = useState<LobbyEntry | null>(getInitialLobby)
   const [homeError, setHomeError] = useState<string | null>(null)
   const [homePlayerName, setHomePlayerName] = useState('')
+  const [modeSelectionPlayerName, setModeSelectionPlayerName] = useState<string | null>(null)
 
   function handleCreateRoom(playerName: string) {
     setHomeError(null)
     setHomePlayerName(playerName)
     console.log('[room] create room clicked')
-    setLobby({ playerName, roomId: generateRoomCode(), entryMode: 'create' })
+    setModeSelectionPlayerName(playerName)
+  }
+
+  function handleSelectMode(mode: GameMode) {
+    if (!modeSelectionPlayerName) {
+      return
+    }
+
+    const playerName = modeSelectionPlayerName
+    setModeSelectionPlayerName(null)
+    setLobby({ playerName, roomId: generateRoomCode(), entryMode: 'create', mode })
   }
 
   function handleJoinRoom(playerName: string, roomId: string) {
@@ -35,6 +62,7 @@ function App() {
         playerName={lobby.playerName}
         roomId={lobby.roomId}
         entryMode={lobby.entryMode}
+        mode={lobby.mode}
         onLeave={() => setLobby(null)}
         onJoinFailed={(message) => {
           setHomePlayerName(lobby.playerName)
@@ -46,6 +74,15 @@ function App() {
           setLobby(null)
           setHomeError(message)
         }}
+      />
+    )
+  }
+
+  if (modeSelectionPlayerName) {
+    return (
+      <GameModeScreen
+        onBack={() => setModeSelectionPlayerName(null)}
+        onSelectMode={handleSelectMode}
       />
     )
   }

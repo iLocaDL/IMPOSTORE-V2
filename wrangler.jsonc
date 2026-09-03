@@ -25,5 +25,13 @@
 
   "observability": {
     "enabled": true
+  },
+
+"d1_databases": [
+  {
+    "binding": "QUESTIONS_DB",
+    "database_name": "impostore-v2-questions",
+    "database_id": "10cf9da4-965a-4cdc-987c-f8efd9da0538"
   }
+]
 }

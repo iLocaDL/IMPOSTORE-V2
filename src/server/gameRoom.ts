@@ -1,6 +1,7 @@
 import type {
   ChatMessage,
   ClientMessage,
+  GameMode,
   Player,
   PlayerAnswer,
   RoomPhase,
@@ -39,6 +40,7 @@ export default class GameRoom {
   private players: Player[] = []
   private hostId: string | null = null
   private phase: RoomPhase = 'lobby'
+  private mode: GameMode = 'manual'
   private game: InternalGameState | null = null
   private initialized = false
   private connections = new Map<string, RoomConnection>()
@@ -70,7 +72,7 @@ export default class GameRoom {
     switch (clientMessage.type) {
       case 'createRoom':
         console.log('[room] received createRoom', this.roomId, sender.id)
-        this.createRoom(sender, clientMessage.name)
+        this.createRoom(sender, clientMessage.name, clientMessage.mode)
         return
       case 'joinRoom':
         this.joinRoom(sender, clientMessage.name)
@@ -118,7 +120,7 @@ export default class GameRoom {
     this.removePlayer(connection.id)
   }
 
-  private createRoom(connection: RoomConnection, name: string) {
+  private createRoom(connection: RoomConnection, name: string, mode: GameMode) {
     if (!name.trim()) {
       this.sendError(connection, 'Nome non valido.')
       return
@@ -131,6 +133,7 @@ export default class GameRoom {
 
     this.initialized = true
     this.phase = 'lobby'
+    this.mode = mode
     this.game = null
     this.players = [{ id: connection.id, name: name.trim() }]
     this.hostId = connection.id
@@ -186,15 +189,15 @@ export default class GameRoom {
 
     if (this.game) {
       this.game.assignments = this.game.assignments.filter((assignment) => assignment.playerId !== playerId)
-      this.game.answers = this.game.answers.filter(
-        (answer) => answer.playerId !== playerId && answer.playerId !== this.hostId,
-      )
+      this.game.answers = this.game.answers.filter((answer) => answer.playerId !== playerId)
       this.game.chats = this.game.chats.filter(
         (message) => message.fromPlayerId !== playerId && message.toPlayerId !== playerId,
       )
       this.game.unreadByUser.delete(playerId)
       this.game.unreadByUser.forEach((counts) => counts.delete(playerId))
     }
+
+    this.advanceClassicRoundIfComplete()
 
     if (this.players.length === 0) {
       this.resetRoom()
@@ -230,8 +233,10 @@ export default class GameRoom {
       return
     }
 
-    if (this.activePlayers().length < 2) {
-      this.sendError(sender, 'Servono almeno 2 giocatori oltre all host per iniziare.')
+    if (this.roundParticipants().length < (this.mode === 'classic' ? 3 : 2)) {
+      this.sendError(sender, this.mode === 'classic'
+        ? 'Servono almeno 3 giocatori per iniziare.'
+        : 'Servono almeno 2 giocatori oltre all host per iniziare.')
       return
     }
 
@@ -254,7 +259,7 @@ export default class GameRoom {
       return
     }
 
-    const activePlayers = this.activePlayers()
+    const activePlayers = this.roundParticipants()
 
     if (activePlayers.length < 2) {
       this.sendError(sender, 'Servono almeno 2 giocatori attivi.')
@@ -297,7 +302,7 @@ export default class GameRoom {
       return
     }
 
-    const player = this.activePlayers().find((currentPlayer) => currentPlayer.id === sender.id)
+    const player = this.roundParticipants().find((currentPlayer) => currentPlayer.id === sender.id)
 
     if (!player || !this.game.assignments.some((assignment) => assignment.playerId === sender.id)) {
       this.sendError(sender, 'Solo i giocatori attivi possono rispondere.')
@@ -318,11 +323,13 @@ export default class GameRoom {
       this.game.answers[existingAnswerIndex] = playerAnswer
     }
 
+    this.advanceClassicRoundIfComplete()
+
     this.broadcastRoomState()
   }
 
   private confirmAnswers(sender: RoomConnection) {
-    if (!this.isHost(sender) || this.phase !== 'answering' || !this.game) {
+    if (this.mode !== 'manual' || !this.isHost(sender) || this.phase !== 'answering' || !this.game) {
       this.sendError(sender, 'Conferma non consentita.')
       return
     }
@@ -405,15 +412,26 @@ export default class GameRoom {
     return this.players.filter((player) => player.id !== this.hostId)
   }
 
+  private roundParticipants() {
+    return this.mode === 'classic' ? this.players : this.activePlayers()
+  }
+
   private allPlayersAnswered() {
     return Boolean(
       this.game &&
-        this.activePlayers().every((player) => this.game?.answers.some((answer) => answer.playerId === player.id)),
+        this.roundParticipants().every((player) => this.game?.answers.some((answer) => answer.playerId === player.id)),
     )
   }
 
   private canUseChat() {
-    return this.phase === 'answering'
+    return this.mode === 'manual' && this.phase === 'answering'
+  }
+
+  private advanceClassicRoundIfComplete() {
+    if (this.mode === 'classic' && this.phase === 'answering' && this.game && this.allPlayersAnswered()) {
+      this.game.answersVisible = false
+      this.phase = 'answersReady'
+    }
   }
 
   private isHost(connection: RoomConnection) {
@@ -429,7 +447,7 @@ export default class GameRoom {
   }
 
   private getPublicStateForConnection(connectionId: string): RoomState {
-    const activePlayerIds = new Set(this.activePlayers().map((player) => player.id))
+    const activePlayerIds = new Set(this.roundParticipants().map((player) => player.id))
     const answers = this.game?.answers.filter((answer) => activePlayerIds.has(answer.playerId)) ?? []
     const isHost = connectionId === this.hostId
     const canSeeAnswers =
@@ -447,6 +465,7 @@ export default class GameRoom {
 
     return {
       roomId: this.roomId,
+      mode: this.mode,
       players: this.players,
       hostId: this.hostId,
       phase: this.phase,
@@ -472,7 +491,7 @@ export default class GameRoom {
       return []
     }
 
-    const activePlayerIds = new Set(this.activePlayers().map((player) => player.id))
+    const activePlayerIds = new Set(this.roundParticipants().map((player) => player.id))
 
     return this.game.answers
       .filter((answer) => activePlayerIds.has(answer.playerId))

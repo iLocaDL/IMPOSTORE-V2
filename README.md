@@ -2,6 +2,32 @@
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
+## Catalogo domande e futuro binding D1
+
+Il Worker usa un `QuestionRepository`. In sviluppo, se non è configurato un database, viene selezionato automaticamente il piccolo catalogo locale in `worker/questions/localQuestionCatalog.ts`.
+
+Il binding D1 previsto si chiama `QUESTIONS_DB`. Quando il database sarà stato creato, aggiungere a `wrangler.jsonc` il blocco seguente sostituendo i segnaposto con i valori restituiti da Wrangler:
+
+```jsonc
+"d1_databases": [
+  {
+    "binding": "QUESTIONS_DB",
+    "database_name": "<nome-database>",
+    "database_id": "<database-id-reale>"
+  }
+]
+```
+
+Comandi da eseguire soltanto quando si deciderà di attivare D1:
+
+```sh
+npx wrangler d1 create <nome-database>
+npx wrangler d1 migrations apply <nome-database> --local
+npx wrangler d1 migrations apply <nome-database> --remote
+```
+
+La migration iniziale è `migrations/0001_question_sets.sql`. Dopo aver configurato `QUESTIONS_DB`, la factory utilizza automaticamente `D1QuestionRepository`. Per rimuovere definitivamente il fallback locale, eliminare il ramo `LocalQuestionRepository` dalla factory e successivamente rimuovere i due file del catalogo locale.
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)

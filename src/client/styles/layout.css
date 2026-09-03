@@ -77,6 +77,14 @@ h2 { font-size: 1.05rem; line-height: 1.25; }
 .form-section { gap: 9px; }
 label { font-size: .92rem; font-weight: 750; }
 
+.mode-choice-list { display: grid; gap: 12px; margin-top: 24px; }
+.mode-choice { display: grid; gap: 6px; min-height: 88px; padding: 18px; border: 2px solid transparent; background: var(--card-muted); color: var(--text); text-align: left; }
+.mode-choice strong { color: var(--primary); font-size: 1.1rem; }
+.mode-choice span { color: var(--muted); font-weight: 600; line-height: 1.4; }
+.mode-choice:hover:not(:disabled) { border-color: var(--primary); background: #f8efff; color: var(--text); }
+.mode-choice--selected, .mode-choice--selected:hover:not(:disabled) { border-color: var(--primary); background: #f8efff; box-shadow: 0 0 0 3px rgb(157 28 138 / 14%); transform: none; }
+.confirm-mode-button { width: 100%; margin-top: 18px; }
+
 input, textarea, select {
   width: 100%;
   min-height: 52px;
@@ -120,6 +128,7 @@ button:hover:not(:disabled) { background: var(--primary-dark); box-shadow: 0 6px
 .room-code-label { color: var(--muted); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .room-code { color: var(--primary); font-size: clamp(1.8rem, 9vw, 2.55rem); font-weight: 900; letter-spacing: .16em; line-height: 1; }
 .connection-status { margin: 12px 0 0; color: var(--muted); font-size: .78rem; text-align: center; }
+.room-mode { margin: -6px 0 16px; color: var(--muted); text-align: center; }
 
 .lobby-section { margin-top: 24px; }
 .player-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border: 1px solid var(--border); border-radius: 14px; background: #fff; font-weight: 750; }

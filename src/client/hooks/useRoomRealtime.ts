@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { ClientMessage, RoomState, ServerMessage } from '../../shared/types'
+import type { ClientMessage, GameMode, RoomState, ServerMessage } from '../../shared/types'
+import { clearRoomSession, readResumeToken, saveRoomSession } from '../realtime/roomSessionStorage'
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'closed' | 'error'
 
@@ -21,16 +22,19 @@ export type RoomRealtimeTransport = {
 }
 
 const REALTIME_NOT_CONFIGURED = 'Il servizio realtime non è ancora configurato.'
+const RECONNECT_DELAY_MS = 1_000
 
 export function useRoomRealtime(
   roomId: string,
   playerName: string,
   entryMode: 'create' | 'join',
+  mode: GameMode | undefined,
   onRoomClosed: (message: string) => void,
   transport?: RoomRealtimeTransport,
 ) {
   const connectionRef = useRef<RoomRealtimeConnection | null>(null)
   const roomClosedRef = useRef(false)
+  const intentionalCloseRef = useRef(false)
   const onRoomClosedRef = useRef(onRoomClosed)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>(transport ? 'connecting' : 'idle')
   const [roomState, setRoomState] = useState<RoomState | null>(null)
@@ -48,88 +52,126 @@ export function useRoomRealtime(
     }
 
     let isActive = true
-    let connection: RoomRealtimeConnection | null = null
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     roomClosedRef.current = false
+    intentionalCloseRef.current = false
 
-    connection = transport.connect(roomId, {
-      onOpen: () => {
-        if (isActive) {
-          setConnectionStatus('connected')
-        }
-      },
-      onMessage: (serverMessage) => {
-        if (!isActive) {
-          return
-        }
+    const connect = () => {
+      if (!isActive) {
+        return
+      }
 
-        if (serverMessage.type === 'roomClosed') {
-          roomClosedRef.current = true
-          setRoomState(null)
-          setCurrentPlayerId(null)
-          setYourQuestion(null)
-          setErrorMessage(null)
-          connection?.close()
-          onRoomClosedRef.current(serverMessage.message)
-          return
-        }
-
-        if (roomClosedRef.current) {
-          return
-        }
-
-        if (serverMessage.type === 'connected') {
-          setCurrentPlayerId(serverMessage.playerId)
-          const initialMessage: ClientMessage = entryMode === 'create'
-            ? { type: 'createRoom', name: playerName }
-            : { type: 'joinRoom', name: playerName }
-          connection?.send(initialMessage)
-        }
-
-        if (serverMessage.type === 'roomCreated') {
-          setCurrentPlayerId(serverMessage.playerId)
-          setRoomState(serverMessage.state)
-          setErrorMessage(null)
-        }
-
-        if (serverMessage.type === 'roomState') {
-          setRoomState(serverMessage.state)
-          setErrorMessage(null)
-
-          if (serverMessage.state.phase !== 'answering') {
-            setYourQuestion(null)
+      setConnectionStatus('connecting')
+      const currentConnection = transport.connect(roomId, {
+        onOpen: () => {
+          if (isActive) {
+            setConnectionStatus('connected')
           }
-        }
+        },
+        onMessage: (serverMessage) => {
+          if (!isActive) {
+            return
+          }
 
-        if (serverMessage.type === 'yourQuestion') {
-          setYourQuestion(serverMessage.question)
-        }
+          if (serverMessage.type === 'roomClosed') {
+            roomClosedRef.current = true
+            intentionalCloseRef.current = true
+            clearRoomSession(roomId)
+            setRoomState(null)
+            setCurrentPlayerId(null)
+            setYourQuestion(null)
+            setErrorMessage(null)
+            currentConnection.close()
+            onRoomClosedRef.current(serverMessage.message)
+            return
+          }
 
-        if (serverMessage.type === 'error') {
-          setErrorMessage(serverMessage.message)
-        }
-      },
-      onError: () => {
-        if (isActive) {
-          setConnectionStatus('error')
-        }
-      },
-      onClose: () => {
-        if (isActive) {
-          setConnectionStatus('closed')
-        }
-      },
-    })
-    connectionRef.current = connection
+          if (roomClosedRef.current) {
+            return
+          }
+
+          if (serverMessage.type === 'connected') {
+            const resumeToken = readResumeToken(roomId)
+            const initialMessage: ClientMessage = resumeToken
+              ? { type: 'resumeRoom', resumeToken }
+              : entryMode === 'create'
+                ? { type: 'createRoom', name: playerName, mode: mode ?? 'manual' }
+                : { type: 'joinRoom', name: playerName }
+            currentConnection.send(initialMessage)
+          }
+
+          if (serverMessage.type === 'sessionCredentials') {
+            setCurrentPlayerId(serverMessage.playerId)
+            saveRoomSession(serverMessage.roomId, serverMessage.resumeToken)
+          }
+
+          if (serverMessage.type === 'roomCreated') {
+            setCurrentPlayerId(serverMessage.playerId)
+            setRoomState(serverMessage.state)
+            setErrorMessage(null)
+          }
+
+          if (serverMessage.type === 'roomState') {
+            setRoomState(serverMessage.state)
+            setErrorMessage(null)
+
+            if (serverMessage.state.phase !== 'answering') {
+              setYourQuestion(null)
+            }
+          }
+
+          if (serverMessage.type === 'yourQuestion') {
+            setYourQuestion(serverMessage.question)
+          }
+
+          if (serverMessage.type === 'error') {
+            if (serverMessage.code === 'INVALID_RESUME_TOKEN') {
+              clearRoomSession(roomId)
+              intentionalCloseRef.current = true
+              currentConnection.close()
+            }
+
+            setErrorMessage(serverMessage.message)
+          }
+        },
+        onError: () => {
+          if (isActive) {
+            setConnectionStatus('error')
+          }
+        },
+        onClose: () => {
+          if (connectionRef.current === currentConnection) {
+            connectionRef.current = null
+          }
+
+          if (!isActive || roomClosedRef.current || intentionalCloseRef.current) {
+            if (isActive) {
+              setConnectionStatus('closed')
+            }
+            return
+          }
+
+          setConnectionStatus('connecting')
+          reconnectTimeout = setTimeout(connect, RECONNECT_DELAY_MS)
+        },
+      })
+      connectionRef.current = currentConnection
+    }
+
+    connect()
 
     return () => {
       isActive = false
-      connection?.close()
+      intentionalCloseRef.current = true
 
-      if (connectionRef.current === connection) {
-        connectionRef.current = null
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout)
       }
+
+      connectionRef.current?.close()
+      connectionRef.current = null
     }
-  }, [entryMode, playerName, roomId, transport])
+  }, [entryMode, mode, playerName, roomId, transport])
 
   const sendMessage = (message: ClientMessage) => {
     connectionRef.current?.send(message)
@@ -156,6 +198,8 @@ export function useRoomRealtime(
       sendMessage({ type: 'sendChatMessage', toPlayerId, text }),
     markChatAsRead: (withPlayerId: string) => sendMessage({ type: 'markChatAsRead', withPlayerId }),
     leaveRoom: () => {
+      intentionalCloseRef.current = true
+      clearRoomSession(roomId)
       sendMessage({ type: 'leaveRoom' })
       connectionRef.current?.close()
     },

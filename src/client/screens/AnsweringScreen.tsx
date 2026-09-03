@@ -11,8 +11,10 @@ type AnsweringScreenProps = {
   currentPlayerId: string | null
   errorMessage: string | null
   onSubmit: (answer: string) => void
+  chatEnabled: boolean
+  hostId: string | null
   unreadChatCount: number
-  onOpenChat: () => void
+  onOpenChat: (playerId: string) => void
   onLeave: () => void
 }
 
@@ -24,6 +26,8 @@ export function AnsweringScreen({
   currentPlayerId,
   errorMessage,
   onSubmit,
+  chatEnabled,
+  hostId,
   unreadChatCount,
   onOpenChat,
   onLeave,
@@ -93,9 +97,11 @@ export function AnsweringScreen({
         )}
         {errorMessage && <p className="error-message">{errorMessage}</p>}
         {validationError && <p className="error-message">{validationError}</p>}
-        <button type="button" className="secondary-button" onClick={onOpenChat}>
-          Chat con host{unreadChatCount > 0 && <span className="chat-badge">{unreadChatCount}</span>}
-        </button>
+        {chatEnabled && hostId ? (
+          <button type="button" className="secondary-button" onClick={() => onOpenChat(hostId)}>
+            Chat con host{unreadChatCount > 0 && <span className="chat-badge">{unreadChatCount}</span>}
+          </button>
+        ) : null}
 
         <section className="answer-status" aria-labelledby="answer-status-title">
           <h2 id="answer-status-title" className="answers-status-summary">

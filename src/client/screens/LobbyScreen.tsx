@@ -11,17 +11,19 @@ import { GameSetupScreen } from './GameSetupScreen'
 import { HostAnsweringScreen } from './HostAnsweringScreen'
 import { HomeScreen } from './HomeScreen'
 import { ResultsScreen } from './ResultsScreen'
+import type { GameMode } from '../../shared/types'
 
 type LobbyScreenProps = {
   playerName: string
   roomId: string
   entryMode: 'create' | 'join'
+  mode?: GameMode
   onLeave: () => void
   onJoinFailed: (message: string) => void
   onRoomClosed: (message: string) => void
 }
 
-export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFailed, onRoomClosed }: LobbyScreenProps) {
+export function LobbyScreen({ playerName, roomId, entryMode, mode, onLeave, onJoinFailed, onRoomClosed }: LobbyScreenProps) {
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null)
   const {
     connectionStatus,
@@ -40,10 +42,13 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
     sendChatMessage,
     markChatAsRead,
     leaveRoom,
-  } = useRoomRealtime(roomId, playerName, entryMode, onRoomClosed, cloudflareRealtimeTransport)
+  } = useRoomRealtime(roomId, playerName, entryMode, mode, onRoomClosed, cloudflareRealtimeTransport)
   const players = roomState?.players ?? []
-  const activePlayers = players.filter((player) => player.id !== roomState?.hostId)
+  const activePlayers = roomState?.mode === 'classic'
+    ? players
+    : players.filter((player) => player.id !== roomState?.hostId)
   const phase = roomState?.phase
+  const chatEnabled = roomState?.mode === 'manual'
   const chatPartner = players.find((player) => player.id === chatPartnerId)
   const hasEntryConfirmation = Boolean(
     roomState && currentPlayerId && roomState.players.some((player) => player.id === currentPlayerId),
@@ -56,6 +61,10 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
   }, [errorMessage, onJoinFailed, roomState])
 
   function openChat(partnerId: string) {
+    if (!chatEnabled) {
+      return
+    }
+
     setChatPartnerId(partnerId)
     markChatAsRead(partnerId)
   }
@@ -78,7 +87,7 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
     )
   }
 
-  if (chatPartner && phase === 'answering') {
+  if (chatEnabled && chatPartner && phase === 'answering') {
     const messages = (roomState?.game?.chatMessages ?? []).filter(
       (message) =>
         (message.fromPlayerId === currentPlayerId && message.toPlayerId === chatPartner.id) ||
@@ -98,7 +107,7 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
   }
 
   if (phase === 'answering') {
-    if (isCurrentPlayerHost) {
+    if (isCurrentPlayerHost && roomState?.mode === 'manual') {
       return (
         <HostAnsweringScreen
           activePlayers={activePlayers}
@@ -121,8 +130,10 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
         currentPlayerId={currentPlayerId}
         errorMessage={errorMessage}
         onSubmit={submitAnswer}
+        chatEnabled={chatEnabled}
+        hostId={roomState?.hostId ?? null}
         unreadChatCount={roomState?.game?.unreadChatCount ?? 0}
-        onOpenChat={() => roomState?.hostId && openChat(roomState.hostId)}
+        onOpenChat={openChat}
         onLeave={exitRoom}
       />
     )
@@ -164,6 +175,7 @@ export function LobbyScreen({ playerName, roomId, entryMode, onLeave, onJoinFail
           <span className="room-code-label">Codice stanza</span>
           <strong className="room-code">{roomId}</strong>
         </div>
+        <p className="room-mode">Modalità: <strong>{roomState?.mode === 'classic' ? 'Classico' : 'Manuale'}</strong></p>
         {connectionStatus !== 'connected' && <p className="connection-status">Connessione: {connectionStatus}</p>}
         <p className="host-message">
           {isCurrentPlayerHost

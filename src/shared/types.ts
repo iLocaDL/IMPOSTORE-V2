@@ -7,6 +7,8 @@ export type RoomPhase = 'lobby' | 'setup' | 'answering' | 'answersReady' | 'show
 
 export type GamePhase = RoomPhase
 
+export type GameMode = 'manual' | 'classic'
+
 export type PlayerAnswer = {
   playerId: string
   playerName: string
@@ -28,6 +30,7 @@ export type ChatMessage = {
 
 export type RoomState = {
   roomId: string
+  mode: GameMode
   players: Player[]
   hostId: string | null
   phase: RoomPhase
@@ -44,8 +47,9 @@ export type RoomState = {
 }
 
 export type ClientMessage =
-  | { type: 'createRoom'; name: string }
+  | { type: 'createRoom'; name: string; mode: GameMode }
   | { type: 'joinRoom'; name: string }
+  | { type: 'resumeRoom'; resumeToken: string }
   | { type: 'startGame' }
   | {
       type: 'submitGameSetup'
@@ -64,8 +68,9 @@ export type ClientMessage =
 
 export type ServerMessage =
   | { type: 'connected'; playerId: string; roomId: string }
+  | { type: 'sessionCredentials'; playerId: string; roomId: string; resumeToken: string }
   | { type: 'roomCreated'; playerId: string; roomId: string; state: RoomState }
   | { type: 'roomState'; state: RoomState }
   | { type: 'roomClosed'; message: string }
   | { type: 'yourQuestion'; question: string }
-  | { type: 'error'; message: string }
+  | { type: 'error'; message: string; code?: 'INVALID_RESUME_TOKEN' }
