@@ -474,6 +474,10 @@ export default class GameRoom {
             answeredPlayerIds: answers.map((answer) => answer.playerId),
             allPlayersAnswered: this.allPlayersAnswered(),
             answersVisible: this.game.answersVisible,
+            normalQuestion:
+              this.phase === 'answersReady' && this.game.answersVisible
+                ? this.game.config?.normalQuestion ?? null
+                : null,
             answers: canSeeAnswers ? answers : null,
             results: canSeeResults ? this.getRoundResults() : null,
             chatMessages: visibleChats,

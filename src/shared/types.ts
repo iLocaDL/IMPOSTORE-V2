@@ -49,6 +49,7 @@ export type RoomState = {
     answeredPlayerIds: string[]
     allPlayersAnswered: boolean
     answersVisible: boolean
+    normalQuestion: string | null
     answers: PlayerAnswer[] | null
     results: RoundResult[] | null
     chatMessages: ChatMessage[]

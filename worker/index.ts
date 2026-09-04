@@ -1264,6 +1264,10 @@ export class GameRoom extends DurableObject<Env> {
             answeredPlayerIds: answers.map((answer) => answer.playerId),
             allPlayersAnswered: this.allPlayersAnswered(state),
             answersVisible: state.round.answersVisible,
+            normalQuestion:
+              state.phase === "answersReady" && state.round.answersVisible
+                ? state.round.config?.normalQuestion ?? null
+                : null,
             answers: canSeeAnswers ? answers : null,
             results: canSeeResults ? this.getRoundResults(state) : null,
             chatMessages: visibleChats,

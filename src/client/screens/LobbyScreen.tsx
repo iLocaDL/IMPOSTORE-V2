@@ -164,6 +164,7 @@ export function LobbyScreen({
         activePlayers={activePlayers}
         answers={roomState?.game?.answers ?? []}
         answersVisible={Boolean(roomState?.game?.answersVisible)}
+        normalQuestion={roomState?.game?.normalQuestion ?? null}
         onShowAnswers={showAnswers}
         onShowResults={showResults}
         onLeave={exitRoom}

@@ -6,6 +6,7 @@ type AnswersReadyScreenProps = {
   activePlayers: Player[]
   answers: PlayerAnswer[]
   answersVisible: boolean
+  normalQuestion: string | null
   onShowAnswers: () => void
   onShowResults: () => void
   onLeave: () => void
@@ -16,6 +17,7 @@ export function AnswersReadyScreen({
   activePlayers,
   answers,
   answersVisible,
+  normalQuestion,
   onShowAnswers,
   onShowResults,
   onLeave,
@@ -27,9 +29,14 @@ export function AnswersReadyScreen({
           <p className="eyebrow">Fase di lettura</p>
           <h1 id="answers-ready-title">Le risposte sono pronte</h1>
         </header>
-        <p className="intro-text">
-          {answersVisible ? 'Leggi le risposte: l’impostore non è ancora rivelato.' : 'Le risposte sono ancora coperte.'}
-        </p>
+        {answersVisible ? (
+          <>
+            <p className="intro-text">Leggi le risposte:</p>
+            <p className="assigned-question answers-ready-question">{normalQuestion}</p>
+          </>
+        ) : (
+          <p className="intro-text">Le risposte sono ancora coperte.</p>
+        )}
         <div className="results-list">
           {activePlayers.map((player) => {
             const answer = answers.find((currentAnswer) => currentAnswer.playerId === player.id)
