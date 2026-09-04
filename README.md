@@ -1,32 +1,66 @@
-# React + TypeScript + Vite
+# Impostore V2
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Applicazione React con Worker Cloudflare, Durable Objects e catalogo domande D1.
 
-## Catalogo domande e futuro binding D1
+## Modalità classica e categorie
 
-Il Worker usa un `QuestionRepository`. In sviluppo, se non è configurato un database, viene selezionato automaticamente il piccolo catalogo locale in `worker/questions/localQuestionCatalog.ts`.
+Quando crea una stanza classica, l'host sceglie una o più categorie:
 
-Il binding D1 previsto si chiama `QUESTIONS_DB`. Quando il database sarà stato creato, aggiungere a `wrangler.jsonc` il blocco seguente sostituendo i segnaposto con i valori restituiti da Wrangler:
+- **Testuali**: domande con risposte libere;
+- **Numeriche**: domande che richiedono valori o quantità;
+- **Extra**: contenuti più espliciti o particolari.
 
-```jsonc
-"d1_databases": [
-  {
-    "binding": "QUESTIONS_DB",
-    "database_name": "<nome-database>",
-    "database_id": "<database-id-reale>"
-  }
-]
-```
+Per impostazione predefinita sono attive **Testuali** e **Numeriche**. **Extra non è
+attiva automaticamente** e deve essere selezionata esplicitamente. Non è possibile
+creare una stanza classica senza almeno una categoria.
 
-Comandi da eseguire soltanto quando si deciderà di attivare D1:
+La selezione viene validata e salvata nello stato della stanza. Il mazzo contiene
+soltanto domande attive delle categorie selezionate e viene ricreato se la selezione
+cambia. Le stanze salvate con il formato precedente usano Testuali e Numeriche,
+senza Extra. La modalità manuale non usa il catalogo e non cambia comportamento.
+
+## Catalogo D1 e fallback locale
+
+Il Worker usa il binding D1 `QUESTIONS_DB` configurato in `wrangler.jsonc`. Il
+database contiene il catalogo completo gestito da `migrations/seed_questions.sql`.
+
+Se il binding non è disponibile, `createQuestionRepository` seleziona un piccolo
+catalogo locale dimostrativo. Il fallback contiene solo sei coppie, copre tutte e
+tre le categorie e serve a mantenere funzionante lo sviluppo senza D1: non è una
+copia delle 101 domande ufficiali e non va considerato equivalente al catalogo D1.
+
+## Preparazione di D1
+
+Per applicare schema, migration e seed al database locale configurato:
 
 ```sh
-npx wrangler d1 create <nome-database>
-npx wrangler d1 migrations apply <nome-database> --local
-npx wrangler d1 migrations apply <nome-database> --remote
+npx wrangler d1 migrations apply impostore-v2-questions --local
+npx wrangler d1 execute impostore-v2-questions --local --file migrations/seed_questions.sql
 ```
 
-La migration iniziale è `migrations/0001_question_sets.sql`. Dopo aver configurato `QUESTIONS_DB`, la factory utilizza automaticamente `D1QuestionRepository`. Per rimuovere definitivamente il fallback locale, eliminare il ramo `LocalQuestionRepository` dalla factory e successivamente rimuovere i due file del catalogo locale.
+La semplice modifica di un file SQL non aggiorna un database già esistente: dopo
+aver aggiornato il codice occorre eseguire esplicitamente migration e seed.
+
+Per aggiornare il database remoto, **solo dopo autorizzazione esplicita**:
+
+```sh
+npx wrangler d1 migrations apply impostore-v2-questions --remote
+npx wrangler d1 execute impostore-v2-questions --remote --file migrations/seed_questions.sql
+```
+
+Il seed è ripetibile: rimuove i vecchi ID `A001` e `A002` e usa gli ID stabili
+`T001`–`T069`, `N001`–`N025` e `X001`–`X007`.
+
+## Sviluppo e verifiche
+
+```sh
+npm run worker:dev
+npm run dev
+node scripts/verify-question-categories.mjs
+python scripts/verify_seed.py
+npm run lint
+npm run build
+```
 
 Currently, two official plugins are available:
 

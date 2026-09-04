@@ -5,13 +5,14 @@ import { useState } from 'react'
 
 import { generateRoomCode } from './client/roomCodes'
 import { readActiveRoomId } from './client/realtime/roomSessionStorage'
-import type { GameMode } from './shared/types'
+import type { GameMode, QuestionCategory } from './shared/types'
 
 type LobbyEntry = {
   playerName: string
   roomId: string
   entryMode: 'create' | 'join'
   mode?: GameMode
+  classicCategories?: QuestionCategory[]
 }
 
 function getInitialLobby(): LobbyEntry | null {
@@ -33,14 +34,14 @@ function App() {
     setModeSelectionPlayerName(playerName)
   }
 
-  function handleSelectMode(mode: GameMode) {
+  function handleSelectMode(mode: GameMode, classicCategories?: QuestionCategory[]) {
     if (!modeSelectionPlayerName) {
       return
     }
 
     const playerName = modeSelectionPlayerName
     setModeSelectionPlayerName(null)
-    setLobby({ playerName, roomId: generateRoomCode(), entryMode: 'create', mode })
+    setLobby({ playerName, roomId: generateRoomCode(), entryMode: 'create', mode, classicCategories })
   }
 
   function handleJoinRoom(playerName: string, roomId: string) {
@@ -63,6 +64,7 @@ function App() {
         roomId={lobby.roomId}
         entryMode={lobby.entryMode}
         mode={lobby.mode}
+        classicCategories={lobby.classicCategories}
         onLeave={() => setLobby(null)}
         onJoinFailed={(message) => {
           setHomePlayerName(lobby.playerName)

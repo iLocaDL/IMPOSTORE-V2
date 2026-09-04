@@ -11,19 +11,29 @@ import { GameSetupScreen } from './GameSetupScreen'
 import { HostAnsweringScreen } from './HostAnsweringScreen'
 import { HomeScreen } from './HomeScreen'
 import { ResultsScreen } from './ResultsScreen'
-import type { GameMode } from '../../shared/types'
+import type { GameMode, QuestionCategory } from '../../shared/types'
 
 type LobbyScreenProps = {
   playerName: string
   roomId: string
   entryMode: 'create' | 'join'
   mode?: GameMode
+  classicCategories?: QuestionCategory[]
   onLeave: () => void
   onJoinFailed: (message: string) => void
   onRoomClosed: (message: string) => void
 }
 
-export function LobbyScreen({ playerName, roomId, entryMode, mode, onLeave, onJoinFailed, onRoomClosed }: LobbyScreenProps) {
+export function LobbyScreen({
+  playerName,
+  roomId,
+  entryMode,
+  mode,
+  classicCategories,
+  onLeave,
+  onJoinFailed,
+  onRoomClosed,
+}: LobbyScreenProps) {
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null)
   const {
     connectionStatus,
@@ -42,7 +52,15 @@ export function LobbyScreen({ playerName, roomId, entryMode, mode, onLeave, onJo
     sendChatMessage,
     markChatAsRead,
     leaveRoom,
-  } = useRoomRealtime(roomId, playerName, entryMode, mode, onRoomClosed, cloudflareRealtimeTransport)
+  } = useRoomRealtime(
+    roomId,
+    playerName,
+    entryMode,
+    mode,
+    classicCategories,
+    onRoomClosed,
+    cloudflareRealtimeTransport,
+  )
   const players = roomState?.players ?? []
   const activePlayers = roomState?.mode === 'classic'
     ? players
@@ -176,6 +194,11 @@ export function LobbyScreen({ playerName, roomId, entryMode, mode, onLeave, onJo
           <strong className="room-code">{roomId}</strong>
         </div>
         <p className="room-mode">Modalità: <strong>{roomState?.mode === 'classic' ? 'Classico' : 'Manuale'}</strong></p>
+        {roomState?.mode === 'classic' && roomState.classicCategories && (
+          <p className="room-categories">
+            Categorie: <strong>{roomState.classicCategories.map(formatCategory).join(', ')}</strong>
+          </p>
+        )}
         {connectionStatus !== 'connected' && <p className="connection-status">Connessione: {connectionStatus}</p>}
         <p className="host-message">
           {isCurrentPlayerHost
@@ -213,4 +236,8 @@ export function LobbyScreen({ playerName, roomId, entryMode, mode, onLeave, onJo
       </section>
     </main>
   )
+}
+
+function formatCategory(category: QuestionCategory) {
+  return category.charAt(0).toUpperCase() + category.slice(1)
 }

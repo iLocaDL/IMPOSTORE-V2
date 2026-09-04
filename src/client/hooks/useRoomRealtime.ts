@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { ClientMessage, GameMode, RoomState, ServerMessage } from '../../shared/types'
+import type {
+  ClientMessage,
+  GameMode,
+  QuestionCategory,
+  RoomState,
+  ServerMessage,
+} from '../../shared/types'
 import { clearRoomSession, readResumeToken, saveRoomSession } from '../realtime/roomSessionStorage'
 
 export type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'closed' | 'error'
@@ -29,6 +35,7 @@ export function useRoomRealtime(
   playerName: string,
   entryMode: 'create' | 'join',
   mode: GameMode | undefined,
+  classicCategories: QuestionCategory[] | undefined,
   onRoomClosed: (message: string) => void,
   transport?: RoomRealtimeTransport,
 ) {
@@ -95,7 +102,12 @@ export function useRoomRealtime(
             const initialMessage: ClientMessage = resumeToken
               ? { type: 'resumeRoom', resumeToken }
               : entryMode === 'create'
-                ? { type: 'createRoom', name: playerName, mode: mode ?? 'manual' }
+                ? {
+                    type: 'createRoom',
+                    name: playerName,
+                    mode: mode ?? 'manual',
+                    classicCategories,
+                  }
                 : { type: 'joinRoom', name: playerName }
             currentConnection.send(initialMessage)
           }
@@ -171,7 +183,7 @@ export function useRoomRealtime(
       connectionRef.current?.close()
       connectionRef.current = null
     }
-  }, [entryMode, mode, playerName, roomId, transport])
+  }, [classicCategories, entryMode, mode, playerName, roomId, transport])
 
   const sendMessage = (message: ClientMessage) => {
     connectionRef.current?.send(message)

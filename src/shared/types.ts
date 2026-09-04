@@ -9,6 +9,16 @@ export type GamePhase = RoomPhase
 
 export type GameMode = 'manual' | 'classic'
 
+export const QUESTION_CATEGORIES = ['testuali', 'numeriche', 'extra'] as const
+
+export type QuestionCategory = (typeof QUESTION_CATEGORIES)[number]
+
+export const DEFAULT_CLASSIC_CATEGORIES: readonly QuestionCategory[] = ['testuali', 'numeriche']
+
+export function isQuestionCategory(value: unknown): value is QuestionCategory {
+  return typeof value === 'string' && QUESTION_CATEGORIES.some((category) => category === value)
+}
+
 export type PlayerAnswer = {
   playerId: string
   playerName: string
@@ -31,6 +41,7 @@ export type ChatMessage = {
 export type RoomState = {
   roomId: string
   mode: GameMode
+  classicCategories?: QuestionCategory[] | null
   players: Player[]
   hostId: string | null
   phase: RoomPhase
@@ -47,7 +58,12 @@ export type RoomState = {
 }
 
 export type ClientMessage =
-  | { type: 'createRoom'; name: string; mode: GameMode }
+  | {
+      type: 'createRoom'
+      name: string
+      mode: GameMode
+      classicCategories?: QuestionCategory[]
+    }
   | { type: 'joinRoom'; name: string }
   | { type: 'resumeRoom'; resumeToken: string }
   | { type: 'startGame' }

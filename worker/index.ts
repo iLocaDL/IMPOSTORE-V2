@@ -1,8 +1,16 @@
 import { DurableObject } from "cloudflare:workers";
 
 import { createQuestionRepository } from "./questions/createQuestionRepository";
+import {
+  parseQuestionCategories,
+  restoreClassicCategories,
+  shouldResetQuestionDeck,
+} from "./questions/categorySelection";
 import type { QuestionRepository } from "./questions/types";
 
+import {
+  DEFAULT_CLASSIC_CATEGORIES,
+} from "../src/shared/types";
 import type {
   ChatMessage,
   ClientMessage,
@@ -13,6 +21,7 @@ import type {
   RoomState,
   RoundResult,
   ServerMessage,
+  QuestionCategory,
 } from "../src/shared/types";
 
 interface Env {
@@ -57,22 +66,37 @@ type InternalRoundState = {
   unreadByUser: Record<string, Record<string, number>>;
 };
 
+type ClassicQuestionState = {
+  deck: string[];
+  cursor: number;
+  categories: QuestionCategory[];
+};
+
 type PersistedGameRoomState = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   roomId: string;
   mode: GameMode;
+  classicCategories: QuestionCategory[] | null;
   hostId: string | null;
   players: InternalPlayer[];
   phase: RoomPhase;
+  classicQuestions: ClassicQuestionState | null;
+  round: InternalRoundState | null;
+};
+
+type VersionTwoPersistedGameRoomState = Omit<
+  PersistedGameRoomState,
+  "schemaVersion" | "classicCategories" | "classicQuestions"
+> & {
+  schemaVersion: 2;
   classicQuestions: {
     deck: string[];
     cursor: number;
   } | null;
-  round: InternalRoundState | null;
 };
 
 type VersionOnePersistedGameRoomState = Omit<
-  PersistedGameRoomState,
+  VersionTwoPersistedGameRoomState,
   "schemaVersion" | "players"
 > & {
   schemaVersion: 1;
@@ -169,7 +193,12 @@ export class GameRoom extends DurableObject<Env> {
 
     switch (clientMessage.type) {
       case "createRoom":
-        await this.createRoom(ws, clientMessage.name, clientMessage.mode);
+        await this.createRoom(
+          ws,
+          clientMessage.name,
+          clientMessage.mode,
+          clientMessage.classicCategories
+        );
         return;
       case "joinRoom":
         await this.joinRoom(ws, clientMessage.name);
@@ -235,7 +264,8 @@ export class GameRoom extends DurableObject<Env> {
   private async createRoom(
     ws: WebSocket,
     name: string,
-    mode: GameMode
+    mode: GameMode,
+    classicCategories: unknown
   ): Promise<void> {
     const attachment = this.getAttachment(ws);
     const normalizedName = name.trim();
@@ -250,6 +280,20 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
+    const selectedClassicCategories = mode === "classic"
+      ? classicCategories === undefined
+        ? [...DEFAULT_CLASSIC_CATEGORIES]
+        : parseQuestionCategories(classicCategories)
+      : null;
+
+    if (mode === "classic" && !selectedClassicCategories) {
+      this.sendError(
+        ws,
+        "Seleziona almeno una categoria valida tra Testuali, Numeriche ed Extra."
+      );
+      return;
+    }
+
     const existingState = await this.getPersistedState();
 
     if (existingState) {
@@ -258,9 +302,10 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     const state: PersistedGameRoomState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       roomId: attachment.roomId,
       mode,
+      classicCategories: selectedClassicCategories,
       hostId: attachment.playerId,
       players: [this.createInternalPlayer(attachment, normalizedName)],
       phase: "lobby",
@@ -481,9 +526,17 @@ export class GameRoom extends DurableObject<Env> {
     ws: WebSocket,
     state: PersistedGameRoomState
   ): Promise<RoundConfig | null> {
-    if (!state.classicQuestions) {
+    const selectedCategories = state.classicCategories ?? [...DEFAULT_CLASSIC_CATEGORIES];
+
+    if (
+      !state.classicQuestions ||
+      shouldResetQuestionDeck(
+        state.classicQuestions.categories,
+        selectedCategories
+      )
+    ) {
       try {
-        const activeIds = await this.questionRepository.listActiveIds();
+        const activeIds = await this.questionRepository.listActiveIds(selectedCategories);
 
         if (activeIds.length === 0) {
           this.sendError(ws, "Non ci sono domande classiche disponibili.");
@@ -493,6 +546,7 @@ export class GameRoom extends DurableObject<Env> {
         state.classicQuestions = {
           deck: this.shuffleQuestionIds(activeIds),
           cursor: 0,
+          categories: [...selectedCategories],
         };
       } catch (error) {
         console.error("[room] failed to initialize classic question deck", {
@@ -521,7 +575,7 @@ export class GameRoom extends DurableObject<Env> {
       try {
         const questionSet = await this.questionRepository.getById(questionSetId);
 
-        if (!questionSet) {
+        if (!questionSet || !selectedCategories.includes(questionSet.category)) {
           continue;
         }
 
@@ -1070,11 +1124,51 @@ export class GameRoom extends DurableObject<Env> {
   private async getPersistedState(): Promise<PersistedGameRoomState | undefined> {
     const storedState = await this.ctx.storage.get<
       | PersistedGameRoomState
+      | VersionTwoPersistedGameRoomState
       | VersionOnePersistedGameRoomState
       | LegacyPersistedGameRoomState
     >(ROOM_STATE_KEY);
 
-    if (!storedState || "schemaVersion" in storedState && storedState.schemaVersion === 2) {
+    if (!storedState) {
+      return storedState;
+    }
+
+    if ("schemaVersion" in storedState && storedState.schemaVersion === 3) {
+      if (storedState.mode === "classic") {
+        const normalizedCategories = restoreClassicCategories(
+          storedState.mode,
+          storedState.classicCategories
+        );
+
+        if (!normalizedCategories) {
+          throw new Error("Classic rooms must have question categories.");
+        }
+
+        const categoriesChanged =
+          JSON.stringify(storedState.classicCategories) !==
+          JSON.stringify(normalizedCategories);
+        const deckIsStale =
+          storedState.classicQuestions !== null &&
+          shouldResetQuestionDeck(
+            storedState.classicQuestions.categories,
+            normalizedCategories
+          );
+
+        storedState.classicCategories = normalizedCategories;
+
+        if (categoriesChanged || deckIsStale) {
+          storedState.classicQuestions = null;
+          await this.ctx.storage.put(ROOM_STATE_KEY, storedState);
+        }
+      } else if (
+        storedState.classicCategories !== null ||
+        storedState.classicQuestions !== null
+      ) {
+        storedState.classicCategories = null;
+        storedState.classicQuestions = null;
+        await this.ctx.storage.put(ROOM_STATE_KEY, storedState);
+      }
+
       return storedState;
     }
 
@@ -1092,9 +1186,13 @@ export class GameRoom extends DurableObject<Env> {
     const disconnectedAt = Date.now();
 
     const migratedState: PersistedGameRoomState = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       roomId,
       mode: "schemaVersion" in storedState ? storedState.mode : "manual",
+      classicCategories: restoreClassicCategories(
+        "schemaVersion" in storedState ? storedState.mode : "manual",
+        undefined
+      ),
       hostId: storedState.hostId,
       players: storedState.players.map((player) => {
         const activeConnectionId = this.findActiveConnectionId(roomId, player.id);
@@ -1111,9 +1209,7 @@ export class GameRoom extends DurableObject<Env> {
         };
       }),
       phase: storedState.phase,
-      classicQuestions: "schemaVersion" in storedState
-        ? storedState.classicQuestions
-        : null,
+      classicQuestions: null,
       round: legacyRound,
     };
 
@@ -1159,6 +1255,7 @@ export class GameRoom extends DurableObject<Env> {
     return {
       roomId: state.roomId,
       mode: state.mode,
+      classicCategories: state.classicCategories,
       players: state.players.map(({ id, name }) => ({ id, name })),
       hostId: state.hostId,
       phase: state.phase,
