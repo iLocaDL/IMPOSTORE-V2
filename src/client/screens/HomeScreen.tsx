@@ -50,15 +50,15 @@ export function HomeScreen({
   return (
     <main className="page-container home-screen" aria-busy={isPending}>
       <div className="home-floating-words" aria-hidden="true">
-        <span>IMPOSTOR</span>
+        <span>IMPOSTER</span>
         <span>IMPOSTEUR</span>
-        <span>DIVERTIMANT</span>
-        <span>bugie</span>
-        <span>ANSWERS</span>
-        <span>SWAG</span>
-        <span>MISTERO</span>
-        <span>FALSO</span>
-        <span>VERO</span>
+        <span>Hochstapler</span>
+        <span>imspostor</span>
+        <span>a DOMANDE</span>
+        <span>Bedrieger</span>
+        <span>Oszust</span>
+        <span>impostores</span>
+        <span>IMPOSTORE</span>
       </div>
       <section className="home-card home-screen-card" aria-labelledby="page-title">
         <button
