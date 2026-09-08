@@ -32,6 +32,12 @@ assert.deepEqual(parseQuestionCategories(['extra', 'testuali', 'extra']), ['test
 assert.equal(parseQuestionCategories([]), null)
 assert.equal(parseQuestionCategories(['sconosciuta']), null)
 assert.deepEqual(restoreClassicCategories('classic', undefined), ['testuali', 'numeriche'])
+assert.deepEqual(restoreClassicCategories('classic', ['extra']), ['testuali', 'numeriche'])
+assert.deepEqual(restoreClassicCategories('classic', ['testuali']), ['testuali', 'numeriche'])
+assert.deepEqual(
+  restoreClassicCategories('classic', ['testuali', 'numeriche', 'extra']),
+  ['testuali', 'numeriche'],
+)
 assert.equal(restoreClassicCategories('manual', ['extra']), null)
 assert.equal(haveSameCategories(['testuali', 'extra'], ['extra', 'testuali']), true)
 assert.equal(haveSameCategories(['testuali'], ['numeriche']), false)

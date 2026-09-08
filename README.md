@@ -4,15 +4,16 @@ Applicazione React con Worker Cloudflare, Durable Objects e catalogo domande D1.
 
 ## Modalità classica e categorie
 
-Quando crea una stanza classica, l'host sceglie una o più categorie:
+Dopo aver creato una stanza classica, l'host può scegliere una o più categorie
+dalle impostazioni nella lobby:
 
 - **Testuali**: domande con risposte libere;
 - **Numeriche**: domande che richiedono valori o quantità;
 - **Extra**: contenuti più espliciti o particolari.
 
 Per impostazione predefinita sono attive **Testuali** e **Numeriche**. **Extra non è
-attiva automaticamente** e deve essere selezionata esplicitamente. Non è possibile
-creare una stanza classica senza almeno una categoria.
+attiva automaticamente** e deve essere selezionata esplicitamente. Deve rimanere
+selezionata almeno una categoria.
 
 La selezione viene validata e salvata nello stato della stanza. Il mazzo contiene
 soltanto domande attive delle categorie selezionate e viene ricreato se la selezione
@@ -27,7 +28,7 @@ database contiene il catalogo completo gestito da `migrations/seed_questions.sql
 Se il binding non è disponibile, `createQuestionRepository` seleziona un piccolo
 catalogo locale dimostrativo. Il fallback contiene solo sei coppie, copre tutte e
 tre le categorie e serve a mantenere funzionante lo sviluppo senza D1: non è una
-copia delle 101 domande ufficiali e non va considerato equivalente al catalogo D1.
+copia delle 126 domande ufficiali e non va considerato equivalente al catalogo D1.
 
 ## Preparazione di D1
 

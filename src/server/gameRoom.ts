@@ -9,6 +9,7 @@ import type {
   RoundResult,
   ServerMessage,
 } from '../shared/types'
+import { buildRoundResults } from '../shared/roundResults'
 
 export type InternalGameConfig = {
   impostorPlayerId: string
@@ -495,16 +496,11 @@ export default class GameRoom {
       return []
     }
 
-    const activePlayerIds = new Set(this.roundParticipants().map((player) => player.id))
-
-    return this.game.answers
-      .filter((answer) => activePlayerIds.has(answer.playerId))
-      .flatMap((answer) => {
-        const assignment = this.game?.assignments.find((item) => item.playerId === answer.playerId)
-        return assignment
-          ? [{ ...answer, question: assignment.question, isImpostor: assignment.isImpostor }]
-          : []
-      })
+    return buildRoundResults(
+      this.roundParticipants(),
+      this.game.answers,
+      this.game.assignments,
+    )
   }
 
   private broadcastRoomState() {

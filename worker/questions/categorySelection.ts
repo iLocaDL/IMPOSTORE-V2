@@ -1,4 +1,5 @@
 import {
+  CLASSIC_SETTINGS_AVAILABLE,
   DEFAULT_CLASSIC_CATEGORIES,
   QUESTION_CATEGORIES,
   isQuestionCategory,
@@ -23,6 +24,10 @@ export function restoreClassicCategories(
 ): QuestionCategory[] | null {
   if (mode !== "classic") {
     return null;
+  }
+
+  if (!CLASSIC_SETTINGS_AVAILABLE) {
+    return [...DEFAULT_CLASSIC_CATEGORIES];
   }
 
   return parseQuestionCategories(value) ?? [...DEFAULT_CLASSIC_CATEGORIES];

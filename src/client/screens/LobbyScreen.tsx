@@ -11,6 +11,11 @@ import { GameSetupScreen } from './GameSetupScreen'
 import { HostAnsweringScreen } from './HostAnsweringScreen'
 import { HomeScreen } from './HomeScreen'
 import { ResultsScreen } from './ResultsScreen'
+import {
+  CLASSIC_SETTINGS_AVAILABLE,
+  DEFAULT_CLASSIC_CATEGORIES,
+  QUESTION_CATEGORIES,
+} from '../../shared/types'
 import type { GameMode, QuestionCategory } from '../../shared/types'
 
 type LobbyScreenProps = {
@@ -18,7 +23,6 @@ type LobbyScreenProps = {
   roomId: string
   entryMode: 'create' | 'join'
   mode?: GameMode
-  classicCategories?: QuestionCategory[]
   onLeave: () => void
   onJoinFailed: (message: string) => void
   onRoomClosed: (message: string) => void
@@ -29,12 +33,14 @@ export function LobbyScreen({
   roomId,
   entryMode,
   mode,
-  classicCategories,
   onLeave,
   onJoinFailed,
   onRoomClosed,
 }: LobbyScreenProps) {
   const [chatPartnerId, setChatPartnerId] = useState<string | null>(null)
+  const [isCategorySettingsOpen, setIsCategorySettingsOpen] = useState(false)
+  const [categorySelection, setCategorySelection] = useState<QuestionCategory[] | null>(null)
+  const [settingsNoticeId, setSettingsNoticeId] = useState(0)
   const {
     connectionStatus,
     roomState,
@@ -42,6 +48,7 @@ export function LobbyScreen({
     isCurrentPlayerHost,
     errorMessage,
     yourQuestion,
+    updateClassicCategories,
     startGame,
     submitGameSetup,
     submitAnswer,
@@ -57,7 +64,6 @@ export function LobbyScreen({
     playerName,
     entryMode,
     mode,
-    classicCategories,
     onRoomClosed,
     cloudflareRealtimeTransport,
   )
@@ -71,12 +77,50 @@ export function LobbyScreen({
   const hasEntryConfirmation = Boolean(
     roomState && currentPlayerId && roomState.players.some((player) => player.id === currentPlayerId),
   )
+  const selectedClassicCategories = categorySelection
+    ?? roomState?.classicCategories
+    ?? [...DEFAULT_CLASSIC_CATEGORIES]
 
   useEffect(() => {
     if (!roomState && errorMessage) {
       onJoinFailed(errorMessage)
     }
   }, [errorMessage, onJoinFailed, roomState])
+
+  useEffect(() => {
+    if (!settingsNoticeId) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => setSettingsNoticeId(0), 2600)
+    return () => window.clearTimeout(timeoutId)
+  }, [settingsNoticeId])
+
+  function openClassicSettings() {
+    if (!CLASSIC_SETTINGS_AVAILABLE) {
+      setSettingsNoticeId((currentId) => currentId + 1)
+      return
+    }
+
+    setIsCategorySettingsOpen(true)
+  }
+
+  function toggleCategory(category: QuestionCategory) {
+    setCategorySelection((currentSelection) => {
+      const selectedCategories = currentSelection ?? selectedClassicCategories
+      const nextSelection = selectedCategories.includes(category)
+        ? selectedCategories.filter((item) => item !== category)
+        : QUESTION_CATEGORIES.filter(
+            (item) => item === category || selectedCategories.includes(item),
+          )
+
+      if (nextSelection.length > 0) {
+        updateClassicCategories(nextSelection)
+      }
+
+      return nextSelection
+    })
+  }
 
   function openChat(partnerId: string) {
     if (!chatEnabled) {
@@ -183,9 +227,73 @@ export function LobbyScreen({
     )
   }
 
+  if (
+    phase === 'lobby'
+    && isCurrentPlayerHost
+    && roomState?.mode === 'classic'
+    && CLASSIC_SETTINGS_AVAILABLE
+    && isCategorySettingsOpen
+  ) {
+    return (
+      <main className="page-container">
+        <section className="home-card" aria-labelledby="category-settings-title">
+          <header className="screen-header">
+            <p className="eyebrow">Impostazioni</p>
+            <h1 id="category-settings-title">Categorie</h1>
+          </header>
+          <fieldset className="category-selection category-selection--settings">
+            <legend>Categorie di domande</legend>
+            <div className="category-choice-list">
+              {QUESTION_CATEGORIES.map((category) => (
+                <label className="category-choice" key={category} htmlFor={`category-${category}`}>
+                  <input
+                    id={`category-${category}`}
+                    type="checkbox"
+                    checked={selectedClassicCategories.includes(category)}
+                    onChange={() => toggleCategory(category)}
+                  />
+                  <span>
+                    <strong>{formatCategory(category)}</strong>
+                    {category === 'extra' && <small>Contenuti più espliciti o particolari.</small>}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className="category-selection-help category-selection-help--footer">
+              Seleziona le tipologie di domande che potranno uscire durante la partita.
+            </p>
+            {selectedClassicCategories.length === 0 && (
+              <p className="error-message" role="alert">Seleziona almeno una categoria.</p>
+            )}
+          </fieldset>
+          <button
+            type="button"
+            className="category-settings-done"
+            disabled={selectedClassicCategories.length === 0}
+            onClick={() => setIsCategorySettingsOpen(false)}
+          >
+            Fine
+          </button>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <main className="page-container">
       <section className="home-card" aria-labelledby="lobby-title">
+        {phase === 'lobby' && isCurrentPlayerHost && roomState?.mode === 'classic' && (
+          <button
+            type="button"
+            className="category-settings-button"
+            aria-label="Impostazioni modalità Classica"
+            onClick={openClassicSettings}
+          >
+            <svg aria-hidden="true" focusable="false">
+              <use href="/icons.svg#settings-icon" />
+            </svg>
+          </button>
+        )}
         <header className="screen-header">
           <p className="eyebrow">Stanza pronta</p>
           <h1 id="lobby-title">Lobby</h1>
@@ -235,6 +343,11 @@ export function LobbyScreen({
         </section>
         <LeaveRoomButton onLeave={exitRoom} />
       </section>
+      {settingsNoticeId > 0 && (
+        <p key={settingsNoticeId} className="toast-message" role="status" aria-live="polite">
+          Non disponibile per ora
+        </p>
+      )}
     </main>
   )
 }

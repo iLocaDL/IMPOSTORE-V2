@@ -35,7 +35,6 @@ export function useRoomRealtime(
   playerName: string,
   entryMode: 'create' | 'join',
   mode: GameMode | undefined,
-  classicCategories: QuestionCategory[] | undefined,
   onRoomClosed: (message: string) => void,
   transport?: RoomRealtimeTransport,
 ) {
@@ -106,7 +105,6 @@ export function useRoomRealtime(
                     type: 'createRoom',
                     name: playerName,
                     mode: mode ?? 'manual',
-                    classicCategories,
                   }
                 : { type: 'joinRoom', name: playerName }
             currentConnection.send(initialMessage)
@@ -183,7 +181,7 @@ export function useRoomRealtime(
       connectionRef.current?.close()
       connectionRef.current = null
     }
-  }, [classicCategories, entryMode, mode, playerName, roomId, transport])
+  }, [entryMode, mode, playerName, roomId, transport])
 
   const sendMessage = (message: ClientMessage) => {
     connectionRef.current?.send(message)
@@ -198,6 +196,8 @@ export function useRoomRealtime(
     isCurrentPlayerHost,
     errorMessage: transport ? errorMessage : REALTIME_NOT_CONFIGURED,
     yourQuestion,
+    updateClassicCategories: (categories: QuestionCategory[]) =>
+      sendMessage({ type: 'updateClassicCategories', categories }),
     startGame: () => sendMessage({ type: 'startGame' }),
     submitGameSetup: (impostorPlayerId: string, normalQuestion: string, impostorQuestion: string) =>
       sendMessage({ type: 'submitGameSetup', impostorPlayerId, normalQuestion, impostorQuestion }),

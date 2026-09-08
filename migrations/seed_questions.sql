@@ -136,7 +136,7 @@ VALUES
 ),
 (
   'T019',
-  'Con quale aggettivo descriveresti i Minions?',
+  'Con quale aggettivo descriveresti un Minions?',
   'Qual è il primo aggettivo che ti viene in mente?',
   'testuali',
   1
@@ -241,7 +241,7 @@ VALUES
 ),
 (
   'T034',
-  'Quale automobile compreresti se fossi famoso?',
+  'Quale automobile useresti se fossi famoso?',
   'Qual è stata la tua prima automobile?',
   'testuali',
   1
@@ -492,6 +492,146 @@ VALUES
   1
 ),
 (
+  'T070',
+  'Se fossi un edificio, quale saresti?',
+  'Qual è il tuo monumento preferito?',
+  'testuali',
+  1
+),
+(
+  'T071',
+  'Quale delle sette meraviglie del mondo è la più bella?',
+  'Quale delle sette meraviglie del mondo è la più sopravvalutata?',
+  'testuali',
+  1
+),
+(
+  'T072',
+  'Quale sarebbe la prima cosa che faresti se ti rimanessero 24 ore?',
+  'Qual è un’attività che avresti paura di fare?',
+  'testuali',
+  1
+),
+(
+  'T073',
+  'Qual è il panorama più bello che hai mai visto?',
+  'Che vista sceglieresti di avere mentre sei sul cesso?',
+  'testuali',
+  1
+),
+(
+  'T074',
+  'Quale oggetto vorresti avere durante un’apocalisse zombie?',
+  'Quale strumento vorresti avere se ti trovassi su un’isola deserta?',
+  'testuali',
+  1
+),
+(
+  'T075',
+  'Qual è lo strumento musicale più armonioso?',
+  'Qual è lo strumento musicale più gay da suonare?',
+  'testuali',
+  1
+),
+(
+  'T076',
+  'Scrivi il giocatore più elegante nel calcio, secondo te.',
+  'Qual è il calciatore che manca di più al calcio moderno?',
+  'testuali',
+  1
+),
+(
+  'T077',
+  'Quale oggetto manderesti nello spazio per farlo trovare a un’altra civiltà?',
+  'Quale oggetto ti rappresenta di più?',
+  'testuali',
+  1
+),
+(
+  'T078',
+  'Qual è il colore migliore per un’auto?',
+  'Scrivi il tuo colore preferito.',
+  'testuali',
+  1
+),
+(
+  'T079',
+  'Qual è il posto più strano in cui hai pisciato?',
+  'Qual è la tua stanza preferita di casa?',
+  'testuali',
+  1
+),
+(
+  'T080',
+  'Qual è la tua pasta preferita?',
+  'Qual è la pasta più sottovalutata?',
+  'testuali',
+  1
+),
+(
+  'T081',
+  'Qual è il tuo pilota di Formula 1 preferito?',
+  'Quale pilota di Formula 1 è il più sopravvalutato?',
+  'testuali',
+  1
+),
+(
+  'T082',
+  'Scrivi qual è il miglior marchio di auto al mondo.',
+  'Scrivi qual è la scuderia di Formula 1 più sottovalutata.',
+  'testuali',
+  1
+),
+(
+  'T083',
+  'Se fossi una droga, quale saresti?',
+  'Quale droga daresti alla persona alla tua destra?',
+  'testuali',
+  1
+),
+(
+  'T084',
+  'Chi tra voi, in questo momento, indossa le scarpe più belle?',
+  'Chi tra voi è il più stupido?',
+  'testuali',
+  1
+),
+(
+  'T085',
+  'Scrivi tre parole che useresti per descriverti.',
+  'Scrivi tre aggettivi che facciano rima tra loro.',
+  'testuali',
+  1
+),
+(
+  'T086',
+  'Se fossi un Pokémon, quale saresti?',
+  'Qual è il Pokémon più brutto che ti viene in mente?',
+  'testuali',
+  1
+),
+(
+  'T087',
+  'Se potessi mangiare qualcosa senza mai ingrassare, cosa sceglieresti?',
+  'Scrivi il tuo snack preferito.',
+  'testuali',
+  1
+),
+(
+  'T088',
+  'Tra tutti gli insetti, qual è il peggiore?',
+  'Se fossi un insetto, quale saresti?',
+  'testuali',
+  1
+),
+(
+  'T089',
+  'Chi tra voi sarebbe il più propenso a tirare un calcio a un castello di sabbia fatto da dei bambini?',
+  'Chi tra voi è il più paranoico?',
+  'testuali',
+  1
+),
+(
   'N001',
   'Quanti tatuaggi hai?',
   'Quanti interventi hai fatto nella tua vita?',
@@ -663,6 +803,41 @@ VALUES
   'N025',
   'Quanto si dovrebbe spendere al massimo per un primo appuntamento?',
   'Oltre quale cifra diventa troppo costoso mangiare al ristorante?',
+  'numeriche',
+  1
+),
+(
+  'N026',
+  'Quante ore di sonno ti servono per sentirti davvero riposato?',
+  'Per quanto tempo riusciresti a stare in piedi senza pause?',
+  'numeriche',
+  1
+),
+(
+  'N027',
+  'Quanti bambini di 7 anni riusciresti a uccidere, uno dopo l’altro, a mani nude?',
+  'Quante volte bestemmi in un giorno?',
+  'numeriche',
+  1
+),
+(
+  'N028',
+  'Stima e scrivi quante parole dici in un giorno.',
+  'Con quanti soldi al mese ti riterresti soddisfatto? (Scrivi solo il numero.)',
+  'numeriche',
+  1
+),
+(
+  'N029',
+  'Qual è l’età migliore a cui morire?',
+  'Scegli un numero da 1 a 100.',
+  'numeriche',
+  1
+),
+(
+  'N030',
+  'Quanti chili riesci a sollevare?',
+  'Quanto vorresti pesare idealmente?',
   'numeriche',
   1
 ),

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 
 type HomeScreenProps = {
@@ -20,7 +20,23 @@ export function HomeScreen({
 }: HomeScreenProps) {
   const [playerName, setPlayerName] = useState(initialPlayerName)
   const [roomCode, setRoomCode] = useState(initialRoomCode)
+  const [isHowToPlayOpen, setIsHowToPlayOpen] = useState(false)
   const isPending = Boolean(pendingMode)
+
+  useEffect(() => {
+    if (!isHowToPlayOpen) {
+      return
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsHowToPlayOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [isHowToPlayOpen])
 
   function createRoom() {
     onCreateRoom(playerName.trim())
@@ -34,17 +50,27 @@ export function HomeScreen({
   return (
     <main className="page-container home-screen" aria-busy={isPending}>
       <div className="home-floating-words" aria-hidden="true">
-        <span>IMPOSTORE</span>
-        <span>KING</span>
-        <span>ZAZETT</span>
-        <span>ADDOE</span>
-        <span>FABRI</span>
-        <span>IUS</span>
+        <span>IMPOSTOR</span>
+        <span>IMPOSTEUR</span>
+        <span>DIVERTIMANT</span>
+        <span>bugie</span>
+        <span>ANSWERS</span>
+        <span>SWAG</span>
         <span>MISTERO</span>
         <span>FALSO</span>
         <span>VERO</span>
       </div>
-      <section className="home-card" aria-labelledby="page-title">
+      <section className="home-card home-screen-card" aria-labelledby="page-title">
+        <button
+          type="button"
+          className="home-help-button"
+          aria-label="Apri Come giocare"
+          aria-haspopup="dialog"
+          onClick={() => setIsHowToPlayOpen(true)}
+          disabled={isPending}
+        >
+          ?
+        </button>
         <header className="screen-header">
           <p className="eyebrow">Party game</p>
           <h1 id="page-title">Domande Impostore</h1>
@@ -96,6 +122,46 @@ export function HomeScreen({
           {pendingMode === 'join' && <p className="pending-message">Connessione alla stanza in corso...</p>}
         </form>
       </section>
+
+      {isHowToPlayOpen && (
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setIsHowToPlayOpen(false)
+            }
+          }}
+        >
+          <section
+            className="home-card how-to-play-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="how-to-play-title"
+          >
+            <header className="screen-header how-to-play-header">
+              <p className="eyebrow">Guida rapida</p>
+              <h1 id="how-to-play-title">Come giocare</h1>
+            </header>
+            <p className="intro-text how-to-play-intro">
+              Tutti ricevono la stessa domanda, eccetto l’impostore che ne riceve una leggermente diversa. Dopo le risposte, il gruppo deve capire chi era.
+            </p>
+            <div className="how-to-play-sections">
+              <section>
+                <h2>Classica</h2>
+                <p>Il gioco sceglie automaticamente le domande e assegna l’impostore. L'host conduce i vari step e partecipa al gioco.</p>
+              </section>
+              <section>
+                <h2>Manuale</h2>
+                <p>L’host non partecipa al gioco ma prepara le domande, sceglie l’impostore e conduce i vari step.</p>
+              </section>
+            </div>
+            <button type="button" className="how-to-play-close" onClick={() => setIsHowToPlayOpen(false)}>
+              Chiudi
+            </button>
+          </section>
+        </div>
+      )}
     </main>
   )
 }

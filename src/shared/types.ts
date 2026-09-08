@@ -15,6 +15,8 @@ export type QuestionCategory = (typeof QUESTION_CATEGORIES)[number]
 
 export const DEFAULT_CLASSIC_CATEGORIES: readonly QuestionCategory[] = ['testuali', 'numeriche']
 
+export const CLASSIC_SETTINGS_AVAILABLE = false
+
 export function isQuestionCategory(value: unknown): value is QuestionCategory {
   return typeof value === 'string' && QUESTION_CATEGORIES.some((category) => category === value)
 }
@@ -67,6 +69,7 @@ export type ClientMessage =
     }
   | { type: 'joinRoom'; name: string }
   | { type: 'resumeRoom'; resumeToken: string }
+  | { type: 'updateClassicCategories'; categories: QuestionCategory[] }
   | { type: 'startGame' }
   | {
       type: 'submitGameSetup'

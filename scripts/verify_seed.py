@@ -20,17 +20,32 @@ first_seed_count = database.execute("SELECT COUNT(*) FROM question_sets").fetcho
 database.executescript(SEED)
 second_seed_count = database.execute("SELECT COUNT(*) FROM question_sets").fetchone()[0]
 
-assert first_seed_count == second_seed_count == 101
+assert first_seed_count == second_seed_count == 126
 assert database.execute(
     "SELECT COUNT(*) FROM question_sets WHERE active <> 1"
 ).fetchone()[0] == 0
 assert database.execute(
     "SELECT COUNT(*) FROM question_sets WHERE id IN ('A001', 'A002')"
 ).fetchone()[0] == 0
+assert database.execute(
+    """
+    SELECT COUNT(*)
+    FROM (
+      SELECT question
+      FROM (
+        SELECT normal_question AS question FROM question_sets
+        UNION ALL
+        SELECT impostor_question AS question FROM question_sets
+      )
+      GROUP BY question
+      HAVING COUNT(*) > 1
+    )
+    """
+).fetchone()[0] == 0
 
 expected_by_category = {
-    "testuali": expected_ids("T", 69),
-    "numeriche": expected_ids("N", 25),
+    "testuali": expected_ids("T", 89),
+    "numeriche": expected_ids("N", 30),
     "extra": expected_ids("X", 7),
 }
 
@@ -65,4 +80,4 @@ assert legacy_database.execute(
     "SELECT category FROM question_sets WHERE id = 'LEGACY001'"
 ).fetchone()[0] == "testuali"
 
-print("Seed SQL verification: OK (69 testuali, 25 numeriche, 7 extra)")
+print("Seed SQL verification: OK (89 testuali, 30 numeriche, 7 extra)")

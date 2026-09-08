@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
+import { buildRoundResults } from "../src/shared/roundResults";
 import { createQuestionRepository } from "./questions/createQuestionRepository";
 import {
   parseQuestionCategories,
@@ -9,6 +10,7 @@ import {
 import type { QuestionRepository } from "./questions/types";
 
 import {
+  CLASSIC_SETTINGS_AVAILABLE,
   DEFAULT_CLASSIC_CATEGORIES,
 } from "../src/shared/types";
 import type {
@@ -206,6 +208,9 @@ export class GameRoom extends DurableObject<Env> {
       case "resumeRoom":
         await this.resumeRoom(ws, clientMessage.resumeToken);
         return;
+      case "updateClassicCategories":
+        await this.updateClassicCategories(ws, clientMessage.categories);
+        return;
       case "startGame":
         await this.startGame(ws);
         return;
@@ -281,15 +286,15 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     const selectedClassicCategories = mode === "classic"
-      ? classicCategories === undefined
-        ? [...DEFAULT_CLASSIC_CATEGORIES]
-        : parseQuestionCategories(classicCategories)
+      ? CLASSIC_SETTINGS_AVAILABLE && classicCategories !== undefined
+        ? parseQuestionCategories(classicCategories)
+        : [...DEFAULT_CLASSIC_CATEGORIES]
       : null;
 
     if (mode === "classic" && !selectedClassicCategories) {
       this.sendError(
         ws,
-        "Seleziona almeno una categoria valida tra Testuali, Numeriche ed Extra."
+        "Seleziona almeno una categoria valida."
       );
       return;
     }
@@ -456,6 +461,48 @@ export class GameRoom extends DurableObject<Env> {
     if (config) {
       await this.activateRound(state, config);
     }
+  }
+
+  private async updateClassicCategories(
+    ws: WebSocket,
+    categories: unknown
+  ): Promise<void> {
+    if (!CLASSIC_SETTINGS_AVAILABLE) {
+      this.sendError(ws, "Non disponibile per ora");
+      return;
+    }
+
+    const attachment = this.getAttachment(ws);
+    const state = await this.getPersistedState();
+
+    if (
+      !state ||
+      state.mode !== "classic" ||
+      state.hostId !== attachment.playerId ||
+      state.phase !== "lobby"
+    ) {
+      this.sendError(ws, "Configurazione delle categorie non consentita.");
+      return;
+    }
+
+    const selectedCategories = parseQuestionCategories(categories);
+
+    if (!selectedCategories) {
+      this.sendError(ws, "Seleziona almeno una categoria valida.");
+      return;
+    }
+
+    state.classicCategories = selectedCategories;
+
+    if (
+      state.classicQuestions &&
+      shouldResetQuestionDeck(state.classicQuestions.categories, selectedCategories)
+    ) {
+      state.classicQuestions = null;
+    }
+
+    await this.ctx.storage.put(ROOM_STATE_KEY, state);
+    this.broadcastRoomState(state);
   }
 
   private async submitGameSetup(
@@ -1089,25 +1136,11 @@ export class GameRoom extends DurableObject<Env> {
       return [];
     }
 
-    const activePlayerIds = new Set(
-      this.getRoundParticipants(state).map((player) => player.id)
+    return buildRoundResults(
+      this.getRoundParticipants(state),
+      state.round.answers,
+      state.round.assignments
     );
-
-    return state.round.answers
-      .filter((answer) => activePlayerIds.has(answer.playerId))
-      .flatMap((answer) => {
-        const assignment = state.round?.assignments.find(
-          (item) => item.playerId === answer.playerId
-        );
-
-        return assignment
-          ? [{
-              ...answer,
-              question: assignment.question,
-              isImpostor: assignment.isImpostor,
-            }]
-          : [];
-      });
   }
 
   private createEmptyRound(): InternalRoundState {
